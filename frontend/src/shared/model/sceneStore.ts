@@ -13,6 +13,10 @@ interface LayerState {
   y: number
   opacity: number
   isKeepAspectRatio: boolean
+  widthMeters: number
+  heightMeters: number
+  rotationDegrees: number
+  isFlippedHorizontally: boolean
 }
 
 interface SceneState {
@@ -21,9 +25,10 @@ interface SceneState {
   selectedLayerId: string | null
   setBackground: (params: { imageUrl: string; widthMeters: number; heightMeters: number }) => void
   addLayer: (params: { imageUrl: string }) => void
-  updateLayer: (id: string, params: { x?: number; y?: number; opacity?: number; isKeepAspectRatio?: boolean }) => void
+  updateLayer: (id: string, params: { x?: number; y?: number; opacity?: number; isKeepAspectRatio?: boolean; widthMeters?: number; heightMeters?: number; rotationDegrees?: number; isFlippedHorizontally?: boolean }) => void
   selectLayer: (id: string | null) => void
   removeLayer: (id: string) => void
+  duplicateLayer: (id: string) => void
 }
 
 export const useSceneStore = create<SceneState>((set, get) => ({
@@ -52,6 +57,10 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       y: 0,
       opacity: 0.5,
       isKeepAspectRatio: true,
+      widthMeters: 0,
+      heightMeters: 0,
+      rotationDegrees: 0,
+      isFlippedHorizontally: false,
     }
 
     set({
@@ -82,6 +91,26 @@ export const useSceneStore = create<SceneState>((set, get) => ({
     set({
       layers: filteredLayers,
       selectedLayerId: state.selectedLayerId === id ? null : state.selectedLayerId,
+    })
+  },
+  duplicateLayer: (id) => {
+    const state = get()
+    const sourceLayer = state.layers.find((layer) => layer.id === id)
+
+    if (!sourceLayer) {
+      return
+    }
+
+    const offset = 20
+    const duplicatedLayer: LayerState = {
+      ...sourceLayer,
+      id: String(Date.now()),
+      x: sourceLayer.x + offset,
+      y: sourceLayer.y + offset,
+    }
+
+    set({
+      layers: [...state.layers, duplicatedLayer],
     })
   },
 }))

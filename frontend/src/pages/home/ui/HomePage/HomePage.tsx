@@ -1,5 +1,5 @@
 import { Container, Paper, Typography, Stack, Box } from '@mui/material'
-import { UploadBackgroundButton, AddLayerButton, LayerList } from '@features'
+import { UploadBackgroundButton, AddLayerButton, LayerList, ProjectorCalculator } from '@features'
 import { SceneCanvas } from '@widgets'
 
 export function HomePage() {
@@ -17,7 +17,7 @@ export function HomePage() {
       >
         <Stack spacing={1}>
           <Typography variant="h3" component="h1">
-            WallGlowSim
+            Создай световую проекцию
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Задайте фон (стену здания) и добавляйте полупрозрачные слои со световыми эффектами.
@@ -57,6 +57,10 @@ export function HomePage() {
             <SceneCanvas />
           </Box>
         </Stack>
+
+        <Box marginTop={3}>
+          <ProjectorCalculator />
+        </Box>
       </Paper>
     </Container>
   )

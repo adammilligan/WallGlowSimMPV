@@ -97,6 +97,22 @@ export function SceneCanvas() {
     }
   }, [backgroundImage, size.height, size.width])
 
+  const metersPerPixelX = useMemo(() => {
+    if (!backgroundRect || background.widthMeters <= 0) {
+      return 0
+    }
+
+    return background.widthMeters / backgroundRect.width
+  }, [backgroundRect, background.widthMeters])
+
+  const metersPerPixelY = useMemo(() => {
+    if (!backgroundRect || background.heightMeters <= 0) {
+      return 0
+    }
+
+    return background.heightMeters / backgroundRect.height
+  }, [backgroundRect, background.heightMeters])
+
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
       {size.width > 0 && size.height > 0 && (
@@ -135,6 +151,10 @@ export function SceneCanvas() {
                 isSelected={selectedLayerId === layer.id}
                 isKeepAspectRatio={layer.isKeepAspectRatio}
                 canvasSize={size}
+                metersPerPixelX={metersPerPixelX}
+                metersPerPixelY={metersPerPixelY}
+                rotationDegrees={layer.rotationDegrees}
+                isFlippedHorizontally={layer.isFlippedHorizontally}
                 onSelect={() => selectLayer(layer.id)}
                 onDragEnd={(position) =>
                   updateLayer(layer.id, {
@@ -142,10 +162,13 @@ export function SceneCanvas() {
                     y: position.y,
                   })
                 }
-                onTransformEnd={(position) =>
+                onTransformEnd={(params) =>
                   updateLayer(layer.id, {
-                    x: position.x,
-                    y: position.y,
+                    x: params.x,
+                    y: params.y,
+                    widthMeters: params.widthMeters,
+                    heightMeters: params.heightMeters,
+                    rotationDegrees: params.rotationDegrees,
                   })
                 }
               />
@@ -166,9 +189,13 @@ interface LayerImageProps {
   isSelected: boolean
   isKeepAspectRatio: boolean
   canvasSize: Size
+  metersPerPixelX: number
+  metersPerPixelY: number
+  rotationDegrees: number
+  isFlippedHorizontally: boolean
   onSelect: () => void
   onDragEnd: (position: { x: number; y: number }) => void
-  onTransformEnd: (position: { x: number; y: number }) => void
+  onTransformEnd: (params: { x: number; y: number; widthMeters: number; heightMeters: number; rotationDegrees: number }) => void
 }
 
 function LayerImage({
@@ -179,6 +206,10 @@ function LayerImage({
   isSelected,
   isKeepAspectRatio,
   canvasSize,
+  metersPerPixelX,
+  metersPerPixelY,
+  rotationDegrees,
+  isFlippedHorizontally,
   onSelect,
   onDragEnd,
   onTransformEnd,
@@ -200,6 +231,28 @@ function LayerImage({
     transformerRef.current.nodes([shapeRef.current])
     transformerRef.current.getLayer()?.batchDraw()
   }, [isSelected])
+
+  useEffect(() => {
+    if (!shapeRef.current) {
+      return
+    }
+
+    const node = shapeRef.current
+    const currentScaleX = node.scaleX()
+
+    if (currentScaleX === 0) {
+      return
+    }
+
+    const isCurrentlyFlipped = currentScaleX < 0
+
+    if (isCurrentlyFlipped === isFlippedHorizontally) {
+      return
+    }
+
+    node.scaleX(currentScaleX * -1)
+    node.getLayer()?.batchDraw()
+  }, [isFlippedHorizontally])
 
   useEffect(() => {
     if (!image) {
@@ -231,8 +284,24 @@ function LayerImage({
       y: scale,
     })
 
+    const node = shapeRef.current
+    const nodeWidth = Math.abs(node.width() * node.scaleX())
+    const nodeHeight = Math.abs(node.height() * node.scaleY())
+
+    const widthMeters = metersPerPixelX > 0 ? nodeWidth * metersPerPixelX : 0
+    const heightMeters = metersPerPixelY > 0 ? nodeHeight * metersPerPixelY : 0
+    const rotationDegrees = node.rotation()
+
+    onTransformEnd({
+      x: node.x(),
+      y: node.y(),
+      widthMeters,
+      heightMeters,
+      rotationDegrees,
+    })
+
     isInitialSizeAppliedRef.current = true
-  }, [canvasSize.height, canvasSize.width, image])
+  }, [canvasSize.height, canvasSize.width, image, metersPerPixelX, metersPerPixelY, onTransformEnd])
 
   if (!image) {
     return null
@@ -249,9 +318,19 @@ function LayerImage({
   const handleTransformEnd = (event: KonvaEventObject<Event>) => {
     const node = event.target
 
+    const nodeWidth = Math.abs(node.width() * node.scaleX())
+    const nodeHeight = Math.abs(node.height() * node.scaleY())
+
+    const widthMeters = metersPerPixelX > 0 ? nodeWidth * metersPerPixelX : 0
+    const heightMeters = metersPerPixelY > 0 ? nodeHeight * metersPerPixelY : 0
+    const rotationDegrees = node.rotation()
+
     onTransformEnd({
       x: node.x(),
       y: node.y(),
+      widthMeters,
+      heightMeters,
+      rotationDegrees,
     })
   }
 
@@ -262,6 +341,7 @@ function LayerImage({
         x={x}
         y={y}
         opacity={opacity}
+        rotation={rotationDegrees}
         draggable
         onMouseDown={onSelect}
         onClick={onSelect}
@@ -273,7 +353,7 @@ function LayerImage({
       {isSelected && (
         <Transformer
           ref={transformerRef}
-          rotateEnabled={false}
+          rotateEnabled
           boundBoxFunc={(oldBox, newBox) => {
             const isTooSmall = newBox.width < 5 || newBox.height < 5
             if (isTooSmall) {
