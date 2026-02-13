@@ -1,8 +1,11 @@
-import { Container, Paper, Typography, Stack, Box } from '@mui/material'
+import { Container, Paper, Typography, Stack, Box, Tabs, Tab } from '@mui/material'
+import { useState } from 'react'
 import { UploadBackgroundButton, AddLayerButton, LayerList, ProjectorCalculator } from '@features'
-import { SceneCanvas } from '@widgets'
+import { SceneCanvas, Scene3D } from '@widgets'
 
 export function HomePage() {
+  const [currentView, setCurrentView] = useState<'2d' | '3d'>('2d')
+
   return (
     <Container maxWidth="lg">
       <Paper
@@ -24,9 +27,20 @@ export function HomePage() {
           </Typography>
         </Stack>
 
-        <Stack direction="row" spacing={2} alignItems="center">
-          <UploadBackgroundButton />
-          <AddLayerButton />
+        <Stack spacing={2}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <UploadBackgroundButton />
+            <AddLayerButton />
+          </Stack>
+          <Tabs
+            value={currentView}
+            onChange={(_event, value: '2d' | '3d') => setCurrentView(value)}
+            textColor="inherit"
+            indicatorColor="primary"
+          >
+            <Tab value="2d" label="2D вид" />
+            <Tab value="3d" label="3D вид" />
+          </Tabs>
         </Stack>
 
         <Stack direction="row" spacing={4} marginTop={2}>
@@ -54,7 +68,7 @@ export function HomePage() {
               overflow: 'hidden',
             }}
           >
-            <SceneCanvas />
+            {currentView === '2d' ? <SceneCanvas /> : <Scene3D />}
           </Box>
         </Stack>
 

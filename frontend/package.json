@@ -14,10 +14,13 @@
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "7.3.7",
     "@mui/material": "7.3.7",
+    "@react-three/drei": "10.7.7",
+    "@react-three/fiber": "9.5.0",
     "konva": "^10.2.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-konva": "^19.2.2",
+    "three": "0.182.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
