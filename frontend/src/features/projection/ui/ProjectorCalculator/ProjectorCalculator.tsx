@@ -1,19 +1,23 @@
-import { useState } from 'react'
 import { Button, Stack, TextField, Typography } from '@mui/material'
+import { useState } from 'react'
 import { useSceneStore } from '@shared'
 
 export function ProjectorCalculator() {
   const layers = useSceneStore((state) => state.layers)
+  const projectorCount = useSceneStore((state) => state.projectorCount)
+  const setProjectorCount = useSceneStore((state) => state.setProjectorCount)
+  const setProjectorSizeMetersState = useSceneStore((state) => state.setProjectorSizeMeters)
   const [projectorSizeMeters, setProjectorSizeMeters] = useState('5')
-  const [projectorCount, setProjectorCount] = useState<number | null>(null)
 
   const handleCalculate = () => {
     const sizeValue = Number(projectorSizeMeters)
 
     if (!Number.isFinite(sizeValue) || sizeValue <= 0) {
-      setProjectorCount(null)
+      setProjectorCount(0)
       return
     }
+
+    setProjectorSizeMetersState(sizeValue)
 
     const projectorArea = sizeValue * sizeValue
 
@@ -49,7 +53,7 @@ export function ProjectorCalculator() {
           Посчитать
         </Button>
       </Stack>
-      {projectorCount !== null && (
+      {projectorCount > 0 && (
         <Typography variant="body2">
           Проекторов:{' '}
           <Typography component="span" fontWeight="bold">

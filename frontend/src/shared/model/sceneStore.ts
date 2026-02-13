@@ -23,12 +23,16 @@ interface SceneState {
   background: BackgroundState
   layers: LayerState[]
   selectedLayerId: string | null
+  projectorCount: number
+  projectorSizeMeters: number
   setBackground: (params: { imageUrl: string; widthMeters: number; heightMeters: number }) => void
   addLayer: (params: { imageUrl: string }) => void
   updateLayer: (id: string, params: { x?: number; y?: number; opacity?: number; isKeepAspectRatio?: boolean; widthMeters?: number; heightMeters?: number; rotationDegrees?: number; isFlippedHorizontally?: boolean }) => void
   selectLayer: (id: string | null) => void
   removeLayer: (id: string) => void
   duplicateLayer: (id: string) => void
+  setProjectorCount: (count: number) => void
+  setProjectorSizeMeters: (size: number) => void
 }
 
 export const useSceneStore = create<SceneState>((set, get) => ({
@@ -39,6 +43,8 @@ export const useSceneStore = create<SceneState>((set, get) => ({
   },
   layers: [],
   selectedLayerId: null,
+  projectorCount: 0,
+  projectorSizeMeters: 5,
   setBackground: ({ imageUrl, widthMeters, heightMeters }) => {
     set({
       background: {
@@ -111,6 +117,16 @@ export const useSceneStore = create<SceneState>((set, get) => ({
 
     set({
       layers: [...state.layers, duplicatedLayer],
+    })
+  },
+  setProjectorCount: (count) => {
+    set({
+      projectorCount: count,
+    })
+  },
+  setProjectorSizeMeters: (size) => {
+    set({
+      projectorSizeMeters: size,
     })
   },
 }))

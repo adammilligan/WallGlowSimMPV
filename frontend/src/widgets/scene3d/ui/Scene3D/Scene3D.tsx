@@ -64,10 +64,116 @@ function Layers3D() {
   )
 }
 
+function LayerLightGrid3D() {
+  const layers = useSceneStore((state) => state.layers)
+  const projectorSizeMeters = useSceneStore((state) => state.projectorSizeMeters)
+
+  const targetLayer = layers.find((layer) => layer.widthMeters > 0 && layer.heightMeters > 0)
+
+  if (!targetLayer) {
+    return null
+  }
+
+  if (projectorSizeMeters <= 0) {
+    return null
+  }
+
+  const width = targetLayer.widthMeters
+  const height = targetLayer.heightMeters
+  const cellSize = projectorSizeMeters
+
+  const cols = Math.max(1, Math.round(width / cellSize))
+  const rows = Math.max(1, Math.round(height / cellSize))
+
+  const cells = []
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const left = -width / 2 + col * cellSize
+      const right = Math.min(left + cellSize, width / 2)
+      const top = height / 2 - row * cellSize
+      const bottom = Math.max(top - cellSize, -height / 2)
+
+      const cellWidth = right - left
+      const cellHeight = top - bottom
+
+      if (cellWidth <= 0 || cellHeight <= 0) {
+        // nothing to draw
+        // eslint-disable-next-line no-continue
+        continue
+      }
+
+      const centerX = left + cellWidth / 2
+      const centerY = bottom + cellHeight / 2
+
+      cells.push({
+        key: `${row}-${col}`,
+        centerX,
+        centerY,
+        cellWidth,
+        cellHeight,
+      })
+    }
+  }
+
+  const zOffset = 0.11
+
+  return (
+    <>
+      {cells.map((cell) => (
+        <mesh key={cell.key} position={[cell.centerX, cell.centerY, zOffset]}>
+          <planeGeometry args={[cell.cellWidth, cell.cellHeight]} />
+          <meshStandardMaterial color="#ffffaa" transparent opacity={0.2} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+interface Projectors3DProps {
+  projectorCount: number
+  wallWidth: number
+  wallHeight: number
+}
+
+function Projectors3D({
+  projectorCount,
+  wallWidth,
+  wallHeight,
+}: Projectors3DProps) {
+  if (projectorCount <= 0) {
+    return null
+  }
+
+  const width = wallWidth > 0 ? wallWidth : 10
+  const height = wallHeight > 0 ? wallHeight : 10
+
+  const groundY = -height / 2
+  const z = Math.max(width, height) * 0.6
+
+  return (
+    <>
+      {Array.from({ length: projectorCount }, (_item, index) => {
+        const t = projectorCount === 1 ? 0.5 : index / (projectorCount - 1)
+        const x = -width / 2 + t * width
+        return (
+          <group key={index} position={[x, groundY, z]}>
+            <mesh>
+              <cylinderGeometry args={[0.3, 0.3, 1, 16]} />
+              <meshStandardMaterial color="#cccccc" />
+            </mesh>
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
 export function Scene3D() {
   const background = useSceneStore((state) => state.background)
+  const projectorCount = useSceneStore((state) => state.projectorCount)
 
-  const cameraPosition = useMemo(() => {
+  const cameraDistance = useMemo(() => {
     const base = Math.max(background.widthMeters, background.heightMeters)
 
     if (base <= 0) {
@@ -84,7 +190,7 @@ export function Scene3D() {
   return (
     <Canvas
       camera={{
-        position: [0, 0, cameraPosition],
+        position: [0, 0, cameraDistance],
         fov: 45,
       }}
     >
@@ -94,6 +200,12 @@ export function Scene3D() {
       <Suspense fallback={null}>
         <BackgroundPlane />
         <Layers3D />
+        <Projectors3D
+          projectorCount={projectorCount}
+          wallWidth={background.widthMeters}
+          wallHeight={background.heightMeters}
+        />
+        <LayerLightGrid3D />
       </Suspense>
       <OrbitControls enableDamping />
     </Canvas>
