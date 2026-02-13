@@ -49,7 +49,11 @@ function Layers3D() {
         const scaleX = layer.isFlippedHorizontally ? -1 : 1
 
         return (
-          <mesh key={layer.id} position={[0, 0, offsetZ]} rotation={[0, 0, rotationRadians]}>
+          <mesh
+            key={layer.id}
+            position={[layer.positionXMeters, layer.positionYMeters, offsetZ]}
+            rotation={[0, 0, rotationRadians]}
+          >
             <planeGeometry args={[layer.widthMeters, layer.heightMeters]} />
             <meshStandardMaterial
               map={texture}
@@ -68,59 +72,72 @@ function LayerLightGrid3D() {
   const layers = useSceneStore((state) => state.layers)
   const projectorSizeMeters = useSceneStore((state) => state.projectorSizeMeters)
 
-  const targetLayer = layers.find((layer) => layer.widthMeters > 0 && layer.heightMeters > 0)
-
-  if (!targetLayer) {
-    return null
-  }
-
   if (projectorSizeMeters <= 0) {
     return null
   }
 
-  const width = targetLayer.widthMeters
-  const height = targetLayer.heightMeters
+  const zOffset = 0.11
   const cellSize = projectorSizeMeters
 
-  const cols = Math.max(1, Math.round(width / cellSize))
-  const rows = Math.max(1, Math.round(height / cellSize))
+  const meshes: {
+    key: string
+    centerX: number
+    centerY: number
+    cellWidth: number
+    cellHeight: number
+  }[] = []
 
-  const cells = []
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const left = -width / 2 + col * cellSize
-      const right = Math.min(left + cellSize, width / 2)
-      const top = height / 2 - row * cellSize
-      const bottom = Math.max(top - cellSize, -height / 2)
-
-      const cellWidth = right - left
-      const cellHeight = top - bottom
-
-      if (cellWidth <= 0 || cellHeight <= 0) {
-        // nothing to draw
-        // eslint-disable-next-line no-continue
-        continue
-      }
-
-      const centerX = left + cellWidth / 2
-      const centerY = bottom + cellHeight / 2
-
-      cells.push({
-        key: `${row}-${col}`,
-        centerX,
-        centerY,
-        cellWidth,
-        cellHeight,
-      })
+  layers.forEach((layer, layerIndex) => {
+    if (layer.widthMeters <= 0 || layer.heightMeters <= 0) {
+      return
     }
-  }
 
-  const zOffset = 0.11
+    const width = layer.widthMeters
+    const height = layer.heightMeters
+
+    const cols = Math.max(1, Math.round(width / cellSize))
+    const rows = Math.max(1, Math.round(height / cellSize))
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const leftLocal = -width / 2 + col * cellSize
+        const rightLocal = Math.min(leftLocal + cellSize, width / 2)
+        const topLocal = height / 2 - row * cellSize
+        const bottomLocal = Math.max(topLocal - cellSize, -height / 2)
+
+        const left = layer.positionXMeters + leftLocal
+        const right = layer.positionXMeters + rightLocal
+        const top = layer.positionYMeters + topLocal
+        const bottom = layer.positionYMeters + bottomLocal
+
+        const cellWidth = right - left
+        const cellHeight = top - bottom
+
+        if (cellWidth <= 0 || cellHeight <= 0) {
+          continue
+        }
+
+        const centerX = left + cellWidth / 2
+        const centerY = bottom + cellHeight / 2
+
+        meshes.push({
+          key: `${layer.id}-${layerIndex}-${row}-${col}`,
+          centerX,
+          centerY,
+          cellWidth,
+          cellHeight,
+        })
+      }
+    }
+  })
+
+  if (meshes.length === 0) {
+    return null
+  }
 
   return (
     <>
-      {cells.map((cell) => (
+      {meshes.map((cell) => (
         <mesh key={cell.key} position={[cell.centerX, cell.centerY, zOffset]}>
           <planeGeometry args={[cell.cellWidth, cell.cellHeight]} />
           <meshStandardMaterial color="#ffffaa" transparent opacity={0.2} />

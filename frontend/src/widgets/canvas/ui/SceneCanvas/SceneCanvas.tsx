@@ -148,6 +148,8 @@ export function SceneCanvas() {
                 x={layer.x}
                 y={layer.y}
                 opacity={layer.opacity}
+                widthMeters={layer.widthMeters}
+                heightMeters={layer.heightMeters}
                 isSelected={selectedLayerId === layer.id}
                 isKeepAspectRatio={layer.isKeepAspectRatio}
                 canvasSize={size}
@@ -156,10 +158,12 @@ export function SceneCanvas() {
                 rotationDegrees={layer.rotationDegrees}
                 isFlippedHorizontally={layer.isFlippedHorizontally}
                 onSelect={() => selectLayer(layer.id)}
-                onDragEnd={(position) =>
+                onDragEnd={(params) =>
                   updateLayer(layer.id, {
-                    x: position.x,
-                    y: position.y,
+                    x: params.x,
+                    y: params.y,
+                    positionXMeters: params.positionXMeters,
+                    positionYMeters: params.positionYMeters,
                   })
                 }
                 onTransformEnd={(params) =>
@@ -169,6 +173,8 @@ export function SceneCanvas() {
                     widthMeters: params.widthMeters,
                     heightMeters: params.heightMeters,
                     rotationDegrees: params.rotationDegrees,
+                    positionXMeters: params.positionXMeters,
+                    positionYMeters: params.positionYMeters,
                   })
                 }
               />
@@ -186,6 +192,8 @@ interface LayerImageProps {
   x: number
   y: number
   opacity: number
+  widthMeters: number
+  heightMeters: number
   isSelected: boolean
   isKeepAspectRatio: boolean
   canvasSize: Size
@@ -194,8 +202,16 @@ interface LayerImageProps {
   rotationDegrees: number
   isFlippedHorizontally: boolean
   onSelect: () => void
-  onDragEnd: (position: { x: number; y: number }) => void
-  onTransformEnd: (params: { x: number; y: number; widthMeters: number; heightMeters: number; rotationDegrees: number }) => void
+  onDragEnd: (params: { x: number; y: number; positionXMeters: number; positionYMeters: number }) => void
+  onTransformEnd: (params: {
+    x: number
+    y: number
+    widthMeters: number
+    heightMeters: number
+    rotationDegrees: number
+    positionXMeters: number
+    positionYMeters: number
+  }) => void
 }
 
 function LayerImage({
@@ -203,6 +219,8 @@ function LayerImage({
   x,
   y,
   opacity,
+  widthMeters,
+  heightMeters,
   isSelected,
   isKeepAspectRatio,
   canvasSize,
@@ -263,6 +281,28 @@ function LayerImage({
       return
     }
 
+    const node = shapeRef.current
+
+    // если у слоя уже есть физические размеры, восстанавливаем масштаб из них
+    if (widthMeters > 0 && metersPerPixelX > 0) {
+      const targetPixelWidth = widthMeters / metersPerPixelX
+
+      if (image.naturalWidth === 0 || targetPixelWidth === 0) {
+        return
+      }
+
+      const baseScaleX = targetPixelWidth / image.naturalWidth
+      const signX = node.scaleX() < 0 ? -1 : 1
+
+      node.scale({
+        x: baseScaleX * signX,
+        y: baseScaleX,
+      })
+
+      return
+    }
+
+    // начальный автоскейл только один раз для новых слоёв
     if (isInitialSizeAppliedRef.current) {
       return
     }
@@ -279,29 +319,39 @@ function LayerImage({
 
     const scale = baseWidth / image.naturalWidth
 
-    shapeRef.current.scale({
+    node.scale({
       x: scale,
       y: scale,
     })
 
-    const node = shapeRef.current
     const nodeWidth = Math.abs(node.width() * node.scaleX())
     const nodeHeight = Math.abs(node.height() * node.scaleY())
 
-    const widthMeters = metersPerPixelX > 0 ? nodeWidth * metersPerPixelX : 0
-    const heightMeters = metersPerPixelY > 0 ? nodeHeight * metersPerPixelY : 0
-    const rotationDegrees = node.rotation()
+    const nextWidthMeters = metersPerPixelX > 0 ? nodeWidth * metersPerPixelX : 0
+    const nextHeightMeters = metersPerPixelY > 0 ? nodeHeight * metersPerPixelY : 0
+    const nextRotationDegrees = node.rotation()
+
+    const centerPixelX = node.x() + nodeWidth / 2
+    const centerPixelY = node.y() + nodeHeight / 2
+
+    const deltaPixelX = centerPixelX - canvasSize.width / 2
+    const deltaPixelY = centerPixelY - canvasSize.height / 2
+
+    const positionXMeters = metersPerPixelX > 0 ? deltaPixelX * metersPerPixelX : 0
+    const positionYMeters = metersPerPixelY > 0 ? -deltaPixelY * metersPerPixelY : 0
 
     onTransformEnd({
       x: node.x(),
       y: node.y(),
-      widthMeters,
-      heightMeters,
-      rotationDegrees,
+      widthMeters: nextWidthMeters,
+      heightMeters: nextHeightMeters,
+      rotationDegrees: nextRotationDegrees,
+      positionXMeters,
+      positionYMeters,
     })
 
     isInitialSizeAppliedRef.current = true
-  }, [canvasSize.height, canvasSize.width, image, metersPerPixelX, metersPerPixelY, onTransformEnd])
+  }, [canvasSize.height, canvasSize.width, image, metersPerPixelX, metersPerPixelY, onTransformEnd, widthMeters])
 
   if (!image) {
     return null
@@ -309,9 +359,24 @@ function LayerImage({
 
   const handleDragEnd = (event: KonvaEventObject<DragEvent>) => {
     const node = event.target
+
+    const nodeWidth = Math.abs(node.width() * node.scaleX())
+    const nodeHeight = Math.abs(node.height() * node.scaleY())
+
+    const centerPixelX = node.x() + nodeWidth / 2
+    const centerPixelY = node.y() + nodeHeight / 2
+
+    const deltaPixelX = centerPixelX - canvasSize.width / 2
+    const deltaPixelY = centerPixelY - canvasSize.height / 2
+
+    const positionXMeters = metersPerPixelX > 0 ? deltaPixelX * metersPerPixelX : 0
+    const positionYMeters = metersPerPixelY > 0 ? -deltaPixelY * metersPerPixelY : 0
+
     onDragEnd({
       x: node.x(),
       y: node.y(),
+      positionXMeters,
+      positionYMeters,
     })
   }
 
@@ -325,12 +390,23 @@ function LayerImage({
     const heightMeters = metersPerPixelY > 0 ? nodeHeight * metersPerPixelY : 0
     const rotationDegrees = node.rotation()
 
+    const centerPixelX = node.x() + nodeWidth / 2
+    const centerPixelY = node.y() + nodeHeight / 2
+
+    const deltaPixelX = centerPixelX - canvasSize.width / 2
+    const deltaPixelY = centerPixelY - canvasSize.height / 2
+
+    const positionXMeters = metersPerPixelX > 0 ? deltaPixelX * metersPerPixelX : 0
+    const positionYMeters = metersPerPixelY > 0 ? -deltaPixelY * metersPerPixelY : 0
+
     onTransformEnd({
       x: node.x(),
       y: node.y(),
       widthMeters,
       heightMeters,
       rotationDegrees,
+      positionXMeters,
+      positionYMeters,
     })
   }
 

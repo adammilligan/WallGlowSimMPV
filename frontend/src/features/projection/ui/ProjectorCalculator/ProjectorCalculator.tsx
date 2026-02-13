@@ -19,23 +19,18 @@ export function ProjectorCalculator() {
 
     setProjectorSizeMetersState(sizeValue)
 
-    const projectorArea = sizeValue * sizeValue
-
-    const totalLayersArea = layers.reduce((sum, layer) => {
+    const totalProjectors = layers.reduce((sum, layer) => {
       if (layer.widthMeters <= 0 || layer.heightMeters <= 0) {
         return sum
       }
 
-      return sum + layer.widthMeters * layer.heightMeters
+      const cols = Math.ceil(layer.widthMeters / sizeValue)
+      const rows = Math.ceil(layer.heightMeters / sizeValue)
+
+      return sum + cols * rows
     }, 0)
 
-    if (totalLayersArea === 0) {
-      setProjectorCount(0)
-      return
-    }
-
-    const count = Math.ceil(totalLayersArea / projectorArea)
-    setProjectorCount(count)
+    setProjectorCount(totalProjectors)
   }
 
   return (

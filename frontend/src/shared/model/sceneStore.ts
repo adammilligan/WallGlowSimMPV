@@ -17,6 +17,8 @@ interface LayerState {
   heightMeters: number
   rotationDegrees: number
   isFlippedHorizontally: boolean
+  positionXMeters: number
+  positionYMeters: number
 }
 
 interface SceneState {
@@ -27,7 +29,7 @@ interface SceneState {
   projectorSizeMeters: number
   setBackground: (params: { imageUrl: string; widthMeters: number; heightMeters: number }) => void
   addLayer: (params: { imageUrl: string }) => void
-  updateLayer: (id: string, params: { x?: number; y?: number; opacity?: number; isKeepAspectRatio?: boolean; widthMeters?: number; heightMeters?: number; rotationDegrees?: number; isFlippedHorizontally?: boolean }) => void
+  updateLayer: (id: string, params: { x?: number; y?: number; opacity?: number; isKeepAspectRatio?: boolean; widthMeters?: number; heightMeters?: number; rotationDegrees?: number; isFlippedHorizontally?: boolean; positionXMeters?: number; positionYMeters?: number }) => void
   selectLayer: (id: string | null) => void
   removeLayer: (id: string) => void
   duplicateLayer: (id: string) => void
@@ -67,6 +69,8 @@ export const useSceneStore = create<SceneState>((set, get) => ({
       heightMeters: 0,
       rotationDegrees: 0,
       isFlippedHorizontally: false,
+      positionXMeters: 0,
+      positionYMeters: 0,
     }
 
     set({
