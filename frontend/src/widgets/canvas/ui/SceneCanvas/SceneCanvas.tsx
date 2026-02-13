@@ -284,19 +284,25 @@ function LayerImage({
     const node = shapeRef.current
 
     // если у слоя уже есть физические размеры, восстанавливаем масштаб из них
-    if (widthMeters > 0 && metersPerPixelX > 0) {
-      const targetPixelWidth = widthMeters / metersPerPixelX
+    if (widthMeters > 0 && heightMeters > 0 && metersPerPixelX > 0 && metersPerPixelY > 0) {
+      if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+        return
+      }
 
-      if (image.naturalWidth === 0 || targetPixelWidth === 0) {
+      const targetPixelWidth = widthMeters / metersPerPixelX
+      const targetPixelHeight = heightMeters / metersPerPixelY
+
+      if (targetPixelWidth === 0 || targetPixelHeight === 0) {
         return
       }
 
       const baseScaleX = targetPixelWidth / image.naturalWidth
+      const baseScaleY = targetPixelHeight / image.naturalHeight
       const signX = node.scaleX() < 0 ? -1 : 1
 
       node.scale({
         x: baseScaleX * signX,
-        y: baseScaleX,
+        y: baseScaleY,
       })
 
       return
@@ -351,7 +357,7 @@ function LayerImage({
     })
 
     isInitialSizeAppliedRef.current = true
-  }, [canvasSize.height, canvasSize.width, image, metersPerPixelX, metersPerPixelY, onTransformEnd, widthMeters])
+  }, [canvasSize.height, canvasSize.width, image, metersPerPixelX, metersPerPixelY, onTransformEnd, widthMeters, heightMeters])
 
   if (!image) {
     return null
